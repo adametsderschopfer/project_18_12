@@ -21,5 +21,7 @@ export const getCategories = async (): Promise<IGetCategories> => {
     }
   });
 
+  console.log(data)
+
   return data as IGetCategories;
 }

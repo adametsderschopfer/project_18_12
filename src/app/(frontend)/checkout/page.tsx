@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {useForm, Controller} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -30,7 +30,7 @@ export default function CheckoutPage() {
     setCartItems(getCartItems());
   }, []);
 
-  const totalAmount = cartItems.reduce((sum, item) => item.price ? sum + item.price : sum, 0);
+  const totalAmount = useMemo(() => cartItems.reduce((sum, item) => item.price ? sum + item.price : sum, 0), [cartItems]);
 
   const {control, handleSubmit, formState: {errors}, reset} = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -118,10 +118,8 @@ export default function CheckoutPage() {
                 <Col span={16}>
                   <Text strong>{item.name}</Text>
                 </Col>
-                <Col span={6} style={{textAlign: 'right'}}>
+                <Col span={8} style={{textAlign: 'right'}}>
                   <Text strong>{item.price ? formatRubCurrency(item.price) : '0'}</Text>
-                </Col>
-                <Col span={2} style={{textAlign: 'right'}}>
                   <Button onClick={() => handleRemoveFromCart(item.id)} type="link">Удалить</Button>
                 </Col>
               </Row>

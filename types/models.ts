@@ -12,6 +12,13 @@ export interface ICategory {
     sourceName: EDataSourceName
 }
 
+export type MergeRule = {
+  targetName: string;
+  aliases: string[];
+  createIfNotExists?: boolean;
+};
+
+
 export interface IProduct {
     id: string
     name: string
