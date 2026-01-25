@@ -2,78 +2,59 @@
 
 import React, {useState} from 'react';
 import Link from 'next/link';
-import {Layout, Typography, Row, Col, Drawer, Button} from 'antd';
-import {MenuOutlined} from '@ant-design/icons';
-import './index.css'
+import {useRouter} from "next/navigation";
+import {Search, ShoppingCart} from "lucide-react";
 
-const {Text} = Typography;
 
 const Header = () => {
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const showDrawer = () => {
-    setOpen(true);
-  };
-
-  const closeDrawer = () => {
-    setOpen(false);
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.replace(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
   };
 
   return (
-    <Layout.Header style={{backgroundColor: '#efefef', padding: '0 16px'}}>
-      <div className="container mx-auto max-w-[1440px]">
-        <Row justify="space-between" align="middle">
-          <Col>
-            <Link href="/" className="text-white hover:opacity-80">
-              <span className="text-xl font-bold">Логотип</span>
+    <header className="bg-black text-white border-b border-gray-800">
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/" className="text-2xl tracking-tight">
+            Проект 18.12
+          </Link>
+
+          <form onSubmit={handleSearch} className="flex-1 max-w-md">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Поиск товаров..."
+                className="w-full px-4 py-2 pl-10 bg-white text-black border border-gray-300 focus:outline-none focus:border-black"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            </div>
+          </form>
+
+          <nav className="flex items-center gap-6">
+            <Link href="/" className="hover:text-gray-300 transition-colors">
+              Главная
             </Link>
-          </Col>
-
-          <Col className="mobile-menu">
-            <Button
-              type="text"
-              icon={<MenuOutlined/>}
-              onClick={showDrawer}
-              style={{color: '#333'}}
-            />
-          </Col>
-
-          <Col className="desktop-menu">
-            <Row gutter={16} align="middle">
-              <Col>
-                <Text style={{color: '#333'}} className="text-sm">
-                  +7 (900) 000 00 00
-                </Text>
-              </Col>
-              <Col>
-                <Link href="/checkout" className="text-white hover:opacity-80">
-                  <Text style={{color: '#333'}}>Корзина</Text>
-                </Link>
-              </Col>
-            </Row>
-          </Col>
-        </Row>
-
-        <Drawer
-          title="Меню"
-          placement="right"
-          onClose={closeDrawer}
-          open={open}
-          width={250}
-        >
-          <div>
-            <Text style={{color: '#333'}} className="text-sm">
-              +7 (900) 000 00 00
-            </Text>
-          </div>
-          <div style={{marginTop: '10px'}}>
-            <Link href="/checkout">
-              <Button type="link">Корзина</Button>
+            <Link href="/catalog" className="hover:text-gray-300 transition-colors">
+              Каталог
             </Link>
-          </div>
-        </Drawer>
+            <Link href="/about" className="hover:text-gray-300 transition-colors">
+              О нас
+            </Link>
+            <Link href="/checkout" className="relative hover:text-gray-300 transition-colors">
+              <ShoppingCart className="w-6 h-6" />
+            </Link>
+          </nav>
+        </div>
       </div>
-    </Layout.Header>
+    </header>
   );
 };
 

@@ -25,6 +25,7 @@ export interface IGiftsRawProduct {
     product_id: string[];
     code: string[];
     group: string[];
+    groupname: string[];
     name: string[];
     product_size: string[];
     matherial: string[];

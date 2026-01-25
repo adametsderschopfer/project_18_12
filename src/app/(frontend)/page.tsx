@@ -11,6 +11,7 @@ const HomePage = () => {
   return (
     <>
       <HeadTitle title={'Категории товаров'}/>
+
       <Row gutter={[16, 16]} justify="center">
         {data.length ? (
           data.map((category) => (

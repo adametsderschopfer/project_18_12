@@ -1,21 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Card, Button, Typography, Spin } from 'antd';
-import Image from 'next/image';
-import { addToCart, getCartItems } from '@/lib/cart';
-import { IProduct } from "../../types";
-import { formatRubCurrency } from "@/lib/format";
+import React, {useState, useEffect} from 'react';
+import {addToCart, getCartItems} from '@/lib/cart';
+import {IProduct} from "../../types";
+import {formatRubCurrency} from "@/lib/format";
+import {parseProductPictures} from "@/lib/product";
+import {usePathname} from "next/dist/client/components/navigation";
+import Link from "next/link";
+import {ShoppingCart} from "lucide-react";
 
-const { Title, Text } = Typography;
 
 interface ProductCardProps {
   product: IProduct;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+const ProductCard: React.FC<ProductCardProps> = ({product}) => {
+  const pathname = usePathname();
+
   const [isInCart, setIsInCart] = useState<boolean>(false);
-  const [imgError, setImgError] = useState<boolean>(false);
 
   useEffect(() => {
     const cartItems = getCartItems();
@@ -30,74 +32,47 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     }
   };
 
-  let imageUrl = '/image/image-placeholder.webp'; // Заглушка по умолчанию
+  let imageUrl = '/image/image-placeholder.webp';
   if (product.pictures) {
-    try {
-      const pics = JSON.parse(product.pictures);
-      if (Array.isArray(pics) && pics.length > 0 && pics[0].url) {
-        imageUrl = pics[0].url;
-      }
-    } catch (e) {
-      console.error('Ошибка парсинга pictures JSON', e);
+    const pics = parseProductPictures(product.pictures);
+    if (pics.length > 0) {
+      imageUrl = pics[0].url;
     }
   }
 
-  const handleImageError = () => {
-    setImgError(true);
-  };
-
   return (
-    <Card
-      hoverable
-      cover={
-        <div className="image-container" style={{ height: '200px', position: 'relative' }}>
-          <Image
-            src={imgError ? '/image/image-placeholder.webp' : imageUrl}
-            alt={product.name}
-            layout="fill"
-            objectFit="contain"
-            onError={handleImageError}
-            placeholder="blur"
-            blurDataURL="/image/image-placeholder.webp"
-          />
-        </div>
-      }
-      style={{ overflow: 'hidden' }}
+    <Link
+      href={`${pathname}/${product.id}`}
+      className="group border border-gray-200 hover:border-black transition-colors bg-white"
     >
-      <Card.Meta
-        title={<Title level={5}>{product.name}</Title>}
-        description={
-          <>
-            {product.article && <Text>Артикул: {product.article}</Text>}
-            <br />
-            {product.brand && <Text>Бренд: {product.brand}</Text>}
-            <br />
-            {product.description && (
-              <Text type="secondary">
-                {product.description.length > 150 ? `${product.description.substring(0, 150)}...` : product.description}
-              </Text>
-            )}
-          </>
-        }
-      />
-      <div className="product-footer" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
-        <div>
-          {product.price !== null && product.price !== undefined ? (
-            <Text strong>{formatRubCurrency(product.price)}</Text>
-          ) : (
-            <Text type="secondary">Цена не указана</Text>
-          )}
-        </div>
-        <Button
-          type="primary"
-          onClick={handleAddToCart}
-          disabled={isInCart}
-          style={{ width: '100px' }}
-        >
-          {isInCart ? 'В корзине' : 'В корзину'}
-        </Button>
+      <div className="aspect-square overflow-hidden bg-gray-100">
+        <img
+          src={imageUrl}
+          alt={product.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
       </div>
-    </Card>
+      <div className="p-4">
+        <h3 className="text-lg mb-2">{product.name}</h3>
+        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+          {product.description}
+        </p>
+        <div className="flex items-center justify-between">
+          <span className="text-xl">    {product.price !== null && product.price !== undefined ? (
+            formatRubCurrency(product.price)
+          ) : (
+            'Цена не указана'
+          )}</span>
+          <button
+            onClick={handleAddToCart}
+            className="bg-black text-white px-4 py-2 hover:bg-gray-800 transition-colors flex items-center gap-2"
+          >
+            <ShoppingCart className="w-4 h-4"/>
+            <span>В корзину</span>
+          </button>
+        </div>
+      </div>
+    </Link>
   );
 };
 

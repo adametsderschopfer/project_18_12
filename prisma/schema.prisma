@@ -26,19 +26,35 @@ model Category {
 }
 
 model Product {
-  id          String    @id
+  id          String           @id
   categoryId  String?
+  groupId     String? // ID группы (если нужно)
+  groupName   String? // Название группы (если не нормализовано)
   name        String
   brand       String?
   article     String?
   description String?
-  price       Float?
+  price       Float? // Может быть null, если цена определяется только в вариантах
   sourceName  String
-  pictures    String    @default("'[]'")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  category    Category? @relation(fields: [categoryId], references: [id])
+  pictures    Json             @default("[]") // JSON-массив строк или объектов
+  params      Json? // { "label": "value", ... } или массив [{label, value}]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  category    Category?        @relation(fields: [categoryId], references: [id])
+  variants    ProductVariant[]
 
   @@index([categoryId])
+  @@index([groupId])
   @@map("products")
+}
+
+model ProductVariant {
+  id       String  @id
+  parentId String // Ссылка на Product.id
+  price    Float?
+  name     String
+  params   Json? // Доп. параметры варианта
+  product  Product @relation(fields: [parentId], references: [id])
+
+  @@map("product_variants")
 }

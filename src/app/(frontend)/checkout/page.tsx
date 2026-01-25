@@ -8,6 +8,7 @@ import {IProduct} from "../../../../types";
 import {clearCart, getCartItems, removeFromCart} from "@/lib/cart";
 import {formatRubCurrency} from "@/lib/format";
 import {Modal, Input, Button, Form, Row, Col, notification, Typography} from 'antd';
+import {parseProductPictures} from "@/lib/product";
 
 const {Title, Text} = Typography;
 
@@ -113,17 +114,32 @@ export default function CheckoutPage() {
       ) : (
         <div className="max-w-2xl mx-auto">
           <div className="space-y-2">
-            {cartItems.map((item) => (
-              <Row key={item.id} className="border-b py-3 pb-5">
-                <Col span={16}>
-                  <Text strong>{item.name}</Text>
-                </Col>
-                <Col span={8} style={{textAlign: 'right'}}>
-                  <Text strong>{item.price ? formatRubCurrency(item.price) : '0'}</Text>
-                  <Button onClick={() => handleRemoveFromCart(item.id)} type="link">Удалить</Button>
-                </Col>
-              </Row>
-            ))}
+            {cartItems.map((item) => {
+              let imageUrl = '/image/image-placeholder.webp';
+              if (item.pictures) {
+                const pics = parseProductPictures(item.pictures);
+                if (pics.length > 0) {
+                  imageUrl = pics[0].url;
+                }
+              }
+
+              return (
+                <Row key={item.id} className="border-b py-3 pb-5" align="middle">
+                  <Col span={3}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imageUrl} width={50} height={50} alt={item.name} />
+                  </Col>
+
+                  <Col span={13}>
+                    <Text strong>{item.name}</Text>
+                  </Col>
+                  <Col span={8} style={{textAlign: 'right'}}>
+                    <Text strong>{item.price ? formatRubCurrency(item.price) : '0'}</Text>
+                    <Button onClick={() => handleRemoveFromCart(item.id)} type="link">Удалить</Button>
+                  </Col>
+                </Row>
+              )
+            })}
           </div>
 
           <Row className="mt-6" justify="space-between" align="middle">

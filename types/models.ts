@@ -1,3 +1,12 @@
+import {Prisma, Product} from "@/prisma/generated";
+import ProductVariantCreateManyInput = Prisma.ProductVariantCreateManyInput;
+import ProductCreateManyInput = Prisma.ProductCreateManyInput;
+
+export type ProceedProductsData = {
+  products: ProductCreateManyInput[]
+  variants: ProductVariantCreateManyInput[]
+}
+
 export enum EDataSourceName {
     Gifts = 'Gifts',
     HappyGifts = 'HappyGifts',

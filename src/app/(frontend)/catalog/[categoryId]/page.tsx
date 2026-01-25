@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import React, {useState, useEffect} from 'react';
 import ProductCard from '@/components/product-card';
 import useSWR from 'swr';
-import { ICategory, IProduct } from "../../../../../types";
-import { Row, Col, Typography, Button, Spin, Drawer } from 'antd';
+import {ICategory, IProduct} from "../../../../../types";
+import {CategorySidebar} from "@/components/category-sidebar";
+import {LoaderCircle} from "lucide-react";
 
-const { Title, Text } = Typography;
 
 const fetchProducts = async (categoryId: string, page: number) => {
   const res = await fetch(`/api/catalog/${categoryId}?page=${page}&limit=16`);
@@ -22,19 +21,17 @@ const fetchSubCategories = async (categoryId: string) => {
   return res.json();
 };
 
-const ProductListPage = ({ params }: { params: Promise<{ categoryId: string }> }) => {
+const ProductListPage = ({params}: { params: Promise<{ categoryId: string }> }) => {
   const categoryId = React.use(params).categoryId;
   const [page, setPage] = useState(1);
   const [allProducts, setAllProducts] = useState<IProduct[]>([]);
 
-  const { data, error, isLoading } = useSWR(
+  const {data, error, isLoading} = useSWR(
     categoryId ? `/api/catalog/${categoryId}?page=${page}&limit=16` : null,
     () => fetchProducts(categoryId, page)
   );
 
   const [subCategories, setSubCategories] = useState<ICategory[]>([]);
-  const [isDrawerVisible, setIsDrawerVisible] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const loadSubCategories = async () => {
@@ -47,17 +44,6 @@ const ProductListPage = ({ params }: { params: Promise<{ categoryId: string }> }
     };
 
     loadSubCategories();
-
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 992); // Проверка, является ли устройство мобильным
-    };
-
-    handleResize(); // Инициализация на старте
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
   }, [categoryId]);
 
   useEffect(() => {
@@ -66,106 +52,38 @@ const ProductListPage = ({ params }: { params: Promise<{ categoryId: string }> }
     }
   }, [data]);
 
-  const handleLoadMore = () => {
-    setPage(prevPage => prevPage + 1);
-  };
-
-  const handleOpenDrawer = () => {
-    setIsDrawerVisible(true);
-  };
-
-  const handleCloseDrawer = () => {
-    setIsDrawerVisible(false);
-  };
-
   return (
-    <>
-      {subCategories.length > 0 && isMobile && (
-        <Button
-          type="primary"
-          style={{
-            width: '100%',
-            marginBottom: '16px',
-          }}
-          onClick={handleOpenDrawer}
-        >
-          Категории
-        </Button>
-      )}
-
-      <Row gutter={[16, 16]}>
-        {subCategories.length > 0 && !isMobile && (
-          <Col xs={24} sm={6} md={6} lg={5}>
-            <aside style={{ marginBottom: '16px' }}>
-              <Title level={4}>Категории</Title>
-              <nav>
-                <ul>
-                  {subCategories.map((category) => (
-                    <li key={category.id} style={{ marginBottom: '8px' }}>
-                      <Link href={`/catalog/${category.id}`}>
-                        <Text strong>{category.name}</Text>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            </aside>
-          </Col>
+    <div className="container mx-auto px-4 py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {subCategories.length > 0 && (
+          <aside>
+            <CategorySidebar categories={subCategories}/>
+          </aside>
         )}
 
-        <Col xs={24} sm={18} md={18} lg={subCategories.length > 0 ? 19 : 24}>
-          {allProducts.length !== 0 || isLoading ? (
-            <>
-              <Title level={2}>Товары</Title>
+        <div className={subCategories.length > 0 ? "lg:col-span-3" : "lg:col-span-4"}>
+          <h1 className="text-4xl mb-8">Каталог</h1>
 
-              {error && <Text type="danger">Ошибка загрузки товаров.</Text>}
-              {isLoading && <Spin size="large" />}
-
-              <Row gutter={[16, 16]} justify="space-between" align="stretch">
-                {allProducts.map((product: IProduct) => (
-                  <Col key={`${product.categoryId}_${product.id}`} xs={24} sm={12} lg={8} xl={6}>
-                    <ProductCard product={product} />
-                  </Col>
-                ))}
-              </Row>
-
-              {data && allProducts.length < data.totalCount && (
-                <div style={{ textAlign: 'center', marginTop: '32px' }}>
-                  <Button
-                    onClick={handleLoadMore}
-                    type="primary"
-                    size="large"
-                    loading={isLoading}
-                  >
-                    Загрузить еще
-                  </Button>
-                </div>
-              )}
-            </>
+          {isLoading ? (
+            <LoaderCircle size={45}/>
+          ) : error ? (
+            <strong>Ошибка загрузки товаров.</strong>
+          ) : allProducts.length === 0 ? (
+            <div className="text-center py-12 bg-gray-100">
+              <p className="text-xl text-gray-600">
+                В этой категории пока нет товаров
+              </p>
+            </div>
           ) : (
-            <Text>Нет товаров в этой категории.</Text>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {allProducts.map(product => (
+                <ProductCard key={product.id} product={product}/>
+              ))}
+            </div>
           )}
-        </Col>
-      </Row>
-
-      <Drawer
-        title="Категории"
-        placement="left"
-        onClose={handleCloseDrawer}
-        open={isDrawerVisible}
-        width={300}
-      >
-        <ul>
-          {subCategories.map((category) => (
-            <li key={category.id} style={{ marginBottom: '8px' }}>
-              <Link href={`/catalog/${category.id}`}>
-                <Text strong>{category.name}</Text>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </Drawer>
-    </>
+        </div>
+      </div>
+    </div>
   );
 };
 
