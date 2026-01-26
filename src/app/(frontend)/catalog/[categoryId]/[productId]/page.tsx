@@ -23,6 +23,7 @@ interface Category {
 interface Product {
   id: string;
   name: string;
+  article: string;
   description: string | null;
   price: number | null;
   pictures: unknown; // Может быть строкой или массивом — обработаем отдельно
@@ -221,7 +222,8 @@ const ProductDetail = () => {
 
         {/* Информация о товаре */}
         <div>
-          <h1 className="text-4xl mb-4">{selectedProduct.name}</h1>
+          <h1 className="text-4xl mb-2">{selectedProduct.name}</h1>
+          <span className="block text-sm mb-4 text-zinc-400">Артикул: {selectedProduct.article}</span>
 
           {currentPrice != null && (
             <p className="text-3xl mb-6">{currentPrice.toLocaleString('ru-RU')} ₽</p>

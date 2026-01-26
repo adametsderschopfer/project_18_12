@@ -53,7 +53,8 @@ const ProductCard: React.FC<ProductCardProps> = ({product}) => {
         />
       </div>
       <div className="p-4">
-        <h3 className="text-lg mb-2 h-[56px] line-clamp-2">{product.name}</h3>
+        <h3 className="text-lg mb-2 line-clamp-1">{product.name}</h3>
+        <span className="block text-sm mb-4 text-zinc-400">Артикул: {product.article}</span>
         <p className="text-sm text-gray-600 mb-4 h-[40px] line-clamp-2" dangerouslySetInnerHTML={{
           __html: product.description
         }} />
