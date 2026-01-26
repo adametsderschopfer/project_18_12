@@ -8,17 +8,17 @@ export type ProceedProductsData = {
 }
 
 export enum EDataSourceName {
-    Gifts = 'Gifts',
-    HappyGifts = 'HappyGifts',
-    Oasis = 'Oasis'
+  Gifts = 'Gifts',
+  HappyGifts = 'HappyGifts',
+  Oasis = 'Oasis'
 }
 
 export interface ICategory {
-    id: string;
-    name: string;
-    level: number;
-    parentId?: string | null;
-    sourceName: EDataSourceName
+  id: string;
+  name: string;
+  level: number;
+  parentId?: string | null;
+  sourceName: EDataSourceName
 }
 
 export type MergeRule = {
@@ -27,15 +27,19 @@ export type MergeRule = {
   createIfNotExists?: boolean;
 };
 
+export type Param = {
+  label: string; value: string; code: string;
+}
+
 
 export interface IProduct {
-    id: string
-    name: string
-    brand?: string | null;
-    article?: string | null;
-    description?: string | null
-    price?: number | null
-    sourceName: EDataSourceName
-    categoryId?: string | null
-    pictures?: string // тут json массив {url: string}[]
+  id: string
+  name: string
+  brand?: string | null;
+  article?: string | null;
+  description?: string | null
+  price?: number | null
+  sourceName: EDataSourceName
+  categoryId?: string | null
+  pictures?: string // тут json массив {url: string}[]
 }

@@ -1,221 +1,343 @@
 'use client';
 
-import React, {useState, useEffect, useMemo} from 'react';
-import {useForm, Controller} from "react-hook-form";
-import {zodResolver} from "@hookform/resolvers/zod";
-import * as z from "zod";
-import {IProduct} from "../../../../types";
-import {clearCart, getCartItems, removeFromCart} from "@/lib/cart";
-import {formatRubCurrency} from "@/lib/format";
-import {Modal, Input, Button, Form, Row, Col, notification, Typography} from 'antd';
-import {parseProductPictures} from "@/lib/product";
+import { useState, useEffect, useTransition } from 'react';
+import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { ShoppingBag, Trash2, Check, X, ArrowRight } from 'lucide-react';
+import { IProduct } from '../../types';
+import {
+  getCartItems,
+  removeFromCart as removeItemFromCart,
+  clearCart,
+} from '@/lib/cart';
 
-const {Title, Text} = Typography;
-
+// Схема для оформления
 const formSchema = z.object({
-  name: z.string().min(2, {message: "Имя должно содержать не менее 2 символов."}),
-  email: z.string().email({message: "Введите корректный email адрес."}),
-  phone: z.string().min(10, {message: "Введите корректный номер телефона."}),
-  message: z.string().optional(),
+  name: z.string().min(2, { message: 'Имя должно содержать не менее 2 символов.' }),
+  email: z.string().email({ message: 'Введите корректный email адрес.' }),
+  phone: z.string().min(10, { message: 'Введите корректный номер телефона.' }),
+  address: z.string().min(5, { message: 'Введите корректный адрес доставки.' }),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function CheckoutPage() {
-  const [notificationApi, notificationContextHolder] = notification.useNotification();
+export default function CartPage() {
   const [cartItems, setCartItems] = useState<IProduct[]>([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [loading, setLoading] = useState(false);  // Для отслеживания загрузки
+  const [isCheckout, setIsCheckout] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+  });
 
   useEffect(() => {
     setCartItems(getCartItems());
   }, []);
 
-  const totalAmount = useMemo(() => cartItems.reduce((sum, item) => item.price ? sum + item.price : sum, 0), [cartItems]);
+  const totalAmount = cartItems.reduce((sum, item) => sum + (item.price || 0), 0);
 
-  const {control, handleSubmit, formState: {errors}, reset} = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      phone: '',
-      message: '',
-    },
-  });
-
-  const handleRemoveFromCart = (productId: string) => {
-    removeFromCart(productId);
+  const handleRemove = (productId: string) => {
+    removeItemFromCart(productId);
     setCartItems(getCartItems());
   };
 
-  const handleCheckoutClick = () => {
-    setIsModalVisible(true);
-  };
-
-  const onSubmit = async (data: FormData) => {
-    const feedbackData = {
-      ...data,
-      products: cartItems.map(item => ({
-        product_id: item.id,
-        article: item.article,
-        name: item.name,
-        price: item.price,
-        sourceName: item.sourceName,
-      })),
-    };
-
-    setLoading(true);
-    try {
-      const response = await fetch('/api/order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(feedbackData),
-      });
-
-      if (response.ok) {
-        setIsModalVisible(false);
-        reset();
-        clearCart();
-        setCartItems([]);
-
-        notificationApi.success({
-          message: 'Заявка отправлена!',
-          description: 'Ваша заявка успешно отправлена, с вами свяжется менеджер.',
-          placement: 'bottom',
-        });
-      } else {
-        notificationApi.error({
-          message: 'Ошибка',
-          description: 'При отправке заявки возникла ошибка, попробуйте позднее!',
-          placement: 'bottom',
-        });
-      }
-    } catch (error) {
-      console.error('Ошибка при отправке данных:', error);
-    } finally {
-      setLoading(false);
+  const handleCheckout = () => {
+    if (cartItems.length > 0) {
+      setIsCheckout(true);
     }
   };
 
-  return (
-    <div className="py-8">
-      {notificationContextHolder}
+  const onSubmit = (data: FormData) => {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const orderData = {
+          ...data,
+          items: cartItems.map((item) => ({
+            productId: item.id,
+            name: item.name,
+            price: item.price || 0,
+            article: item.article,
+            sourceName: item.sourceName,
+          })),
+          total: totalAmount,
+        };
 
-      <Title level={2} className="text-center mb-8">Корзина</Title>
+        const response = await fetch('/api/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(orderData),
+        });
 
-      {cartItems.length === 0 ? (
-        <Row justify="center" align="middle" style={{minHeight: '200px'}}>
-          <Col>
-            <Text className="text-center text-gray-600">Ваша корзина пуста.</Text>
-          </Col>
-        </Row>
-      ) : (
-        <div className="max-w-2xl mx-auto">
-          <div className="space-y-2">
-            {cartItems.map((item) => {
-              let imageUrl = '/image/image-placeholder.webp';
-              if (item.pictures) {
-                const pics = parseProductPictures(item.pictures);
-                if (pics.length > 0) {
-                  imageUrl = pics[0].url;
-                }
-              }
+        if (response.ok) {
+          clearCart();
+          setOrderPlaced(true);
+        } else {
+          setError('Не удалось отправить заказ. Попробуйте позже.');
+        }
+      } catch (err) {
+        console.error('Order error:', err);
+        setError('Произошла ошибка при отправке заказа.');
+      }
+    });
+  };
 
-              return (
-                <Row key={item.id} className="border-b py-3 pb-5" align="middle">
-                  <Col span={3}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={imageUrl} width={50} height={50} alt={item.name} />
-                  </Col>
+  // === Экран успешного заказа ===
+  if (orderPlaced) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-md mx-auto text-center">
+          <div className="w-20 h-20 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-6">
+            <Check className="w-12 h-12" />
+          </div>
+          <h1 className="text-4xl mb-4">Заказ оформлен!</h1>
+          <p className="text-gray-600 mb-8">
+            Мы свяжемся с вами в ближайшее время для подтверждения заказа.
+          </p>
+          <Link
+            href="/"
+            className="bg-black text-white px-8 py-3 hover:bg-gray-800 transition-colors inline-block"
+          >
+            Вернуться на главную
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-                  <Col span={13}>
-                    <Text strong>{item.name}</Text>
-                  </Col>
-                  <Col span={8} style={{textAlign: 'right'}}>
-                    <Text strong>{item.price ? formatRubCurrency(item.price) : '0'}</Text>
-                    <Button onClick={() => handleRemoveFromCart(item.id)} type="link">Удалить</Button>
-                  </Col>
-                </Row>
-              )
-            })}
+  // === Экран оформления заказа ===
+  if (isCheckout) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <button
+          type="button"
+          onClick={() => setIsCheckout(false)}
+          className="inline-flex items-center gap-2 mb-6 text-gray-600 hover:text-black"
+        >
+          <ArrowRight className="w-4 h-4 rotate-180" />
+          Назад к корзине
+        </button>
+
+        <h1 className="text-4xl mb-8">Оформление заказа</h1>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Форма */}
+          <div className="lg:col-span-2">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div className="bg-white border border-gray-200 p-6">
+                <h2 className="text-2xl mb-6">Контактная информация</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block mb-2">Имя *</label>
+                    <input
+                      type="text"
+                      {...register('name')}
+                      className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:border-black"
+                    />
+                    {errors.name && (
+                      <p className="text-red-600 text-sm mt-1">{errors.name.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block mb-2">Email *</label>
+                    <input
+                      type="email"
+                      {...register('email')}
+                      className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:border-black"
+                    />
+                    {errors.email && (
+                      <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block mb-2">Телефон *</label>
+                    <input
+                      type="tel"
+                      {...register('phone')}
+                      className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:border-black"
+                    />
+                    {errors.phone && (
+                      <p className="text-red-600 text-sm mt-1">{errors.phone.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block mb-2">Адрес доставки *</label>
+                    <textarea
+                      {...register('address')}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:border-black"
+                    />
+                    {errors.address && (
+                      <p className="text-red-600 text-sm mt-1">{errors.address.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded">
+                  <X className="w-5 h-5" />
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isPending}
+                className="w-full bg-black text-white px-8 py-4 text-lg hover:bg-gray-800 transition-colors disabled:opacity-70"
+              >
+                {isPending ? 'Отправка...' : 'Подтвердить заказ'}
+              </button>
+            </form>
           </div>
 
-          <Row className="mt-6" justify="space-between" align="middle">
-            <Text strong>Итого:</Text>
-            <Text strong>{formatRubCurrency(totalAmount)}</Text>
-          </Row>
-
-          <div className="mt-8 text-right">
-            <Button type="primary" onClick={handleCheckoutClick}>Оформить заявку</Button>
+          {/* Сводка */}
+          <div>
+            <div className="bg-white border border-gray-200 p-6 sticky top-4">
+              <h2 className="text-2xl mb-6">Ваш заказ</h2>
+              <div className="space-y-4 mb-6">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span>{item.name}</span>
+                    <span>{(item.price || 0).toLocaleString('ru-RU')} ₽</span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-gray-200 pt-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Товары:</span>
+                  <span>{totalAmount.toLocaleString('ru-RU')} ₽</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Доставка:</span>
+                  <span>Бесплатно</span>
+                </div>
+                <div className="flex justify-between text-xl pt-2 border-t border-gray-200">
+                  <span>Итого:</span>
+                  <span>{totalAmount.toLocaleString('ru-RU')} ₽</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      <Modal
-        title="Оформление заявки"
-        open={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
-        footer={null}
-        width={600}
-      >
-        <Form onFinish={handleSubmit(onSubmit)} layout="vertical">
-          <Form.Item
-            label="Имя"
-            validateStatus={errors.name ? 'error' : ''}
-            help={errors.name?.message}
+  // === Экран корзины ===
+  if (cartItems.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center max-w-md mx-auto">
+          <ShoppingBag className="w-24 h-24 mx-auto mb-6 text-gray-300" />
+          <h1 className="text-3xl mb-4">Корзина пуста</h1>
+          <p className="text-gray-600 mb-8">
+            Добавьте товары в корзину, чтобы оформить заказ
+          </p>
+          <Link
+            href="/catalog"
+            className="inline-flex items-center gap-2 bg-black text-white px-8 py-3 hover:bg-gray-800 transition-colors"
           >
-            <Controller
-              name="name"
-              control={control}
-              render={({field}) => <Input {...field} />}
-            />
-          </Form.Item>
+            Перейти в каталог
+            <ArrowRight className="w-5 h-5" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-          <Form.Item
-            label="Email"
-            validateStatus={errors.email ? 'error' : ''}
-            help={errors.email?.message}
-          >
-            <Controller
-              name="email"
-              control={control}
-              render={({field}) => <Input type="email" {...field} />}
-            />
-          </Form.Item>
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl mb-8">Корзина</h1>
 
-          <Form.Item
-            label="Телефон"
-            validateStatus={errors.phone ? 'error' : ''}
-            help={errors.phone?.message}
-          >
-            <Controller
-              name="phone"
-              control={control}
-              render={({field}) => <Input type="tel" {...field} />}
-            />
-          </Form.Item>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Товары */}
+        <div className="lg:col-span-2 space-y-4">
+          {cartItems.map((item) => {
+            // Парсим изображение
+            let imageUrl = '';
+            if (typeof item.pictures === 'string') {
+              try {
+                const pics = JSON.parse(item.pictures);
+                if (Array.isArray(pics) && pics.length > 0) {
+                  imageUrl = pics[0];
+                }
+              } catch (e) {
+                /* ignore */
+              }
+            } else if (Array.isArray(item.pictures) && item.pictures.length > 0) {
+              imageUrl = item.pictures[0];
+            }
 
-          <Form.Item
-            label="Сообщение"
-            validateStatus={errors.message ? 'error' : ''}
-            help={errors.message?.message}
-          >
-            <Controller
-              name="message"
-              control={control}
-              render={({field}) => <Input.TextArea {...field} rows={4}/>}
-            />
-          </Form.Item>
+            return (
+              <div
+                key={item.id}
+                className="flex gap-4 bg-white border border-gray-200 p-4"
+              >
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt={item.name}
+                    className="w-24 h-24 object-cover bg-gray-100"
+                  />
+                ) : (
+                  <div className="w-24 h-24 bg-gray-100 flex items-center justify-center text-gray-400">
+                    Нет фото
+                  </div>
+                )}
+                <div className="flex-1">
+                  <h3 className="text-lg mb-2">{item.name}</h3>
+                  <p className="text-xl">{(item.price || 0).toLocaleString('ru-RU')} ₽</p>
+                </div>
+                <div className="flex flex-col items-end justify-between">
+                  <button
+                    onClick={() => handleRemove(item.id)}
+                    className="text-gray-400 hover:text-black transition-colors"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                  <p className="text-xl">{(item.price || 0).toLocaleString('ru-RU')} ₽</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading} disabled={loading}>
-              {loading ? 'Отправка...' : 'Отправить заявку'}
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
+        {/* Итог */}
+        <div>
+          <div className="bg-white border border-gray-200 p-6 sticky top-4">
+            <h2 className="text-2xl mb-6">Итого</h2>
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Товары:</span>
+                <span>{totalAmount.toLocaleString('ru-RU')} ₽</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Доставка:</span>
+                <span>Бесплатно</span>
+              </div>
+              <div className="border-t border-gray-200 pt-3 flex justify-between text-xl">
+                <span>Всего:</span>
+                <span>{totalAmount.toLocaleString('ru-RU')} ₽</span>
+              </div>
+            </div>
+            <button
+              onClick={handleCheckout}
+              className="w-full bg-black text-white text-center px-8 py-3 hover:bg-gray-800 transition-colors"
+            >
+              Оформить заказ
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

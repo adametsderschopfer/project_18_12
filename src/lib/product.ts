@@ -1,4 +1,4 @@
-export const parseProductPictures = (pictures: string): { url: string }[] => {
+export const parseProductPictures = (pictures: string): string[] => {
   try {
     return JSON.parse(pictures);
   } catch (e) {

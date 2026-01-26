@@ -1,48 +1,43 @@
-// app/api/search/[query]/route.ts
+// app/api/search/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ query: string }> }) {
-  const { query } = await params;
-  console.log(query);
-  return NextResponse.next()
-  //
-  // // Извлекаем параметры пагинации
-  // const searchParams = req.nextUrl.searchParams;
-  // const limit = parseInt(searchParams.get('limit') || '10', 10);
-  // const page = parseInt(searchParams.get('page') || '1', 10);
-  //
-  // // Валидация
-  // if (isNaN(limit) || isNaN(page) || limit <= 0 || page <= 0) {
-  //   return NextResponse.json({ error: 'Invalid pagination parameters' }, { status: 400 });
-  // }
-  //
-  // const skip = (page - 1) * limit;
-  //
-  // // Условие поиска по name, description и brand
-  // const searchCondition = {
-  //   OR: [
-  //     { name: { contains: query, mode: 'insensitive' } },
-  //     { brand: { contains: query, mode: 'insensitive' } },
-  //   ],
-  // };
-  //
-  // // Получаем продукты
-  // const products = await prisma.product.findMany({
-  //   where: searchCondition,
-  //   skip,
-  //   take: limit,
-  // });
-  //
-  // // Получаем общее количество совпадений
-  // const totalCount = await prisma.product.count({
-  //   where: searchCondition,
-  // });
-  //
-  // return NextResponse.json({
-  //   products,
-  //   totalCount,
-  //   page,
-  //   limit,
-  // });
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const query = searchParams.get('q')?.trim() || '';
+
+  if (!query) {
+    return NextResponse.json([]);
+  }
+
+  const words = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(w => w.length > 0);
+
+  try {
+    const whereConditions = words.map(word => ({
+      OR: [
+        { name: { contains: word, mode: 'insensitive' } },
+        { description: { contains: word, mode: 'insensitive' } },
+        { article: { contains: word, mode: 'insensitive' } },
+      ],
+    }));
+
+    const products = await prisma.product.findMany({
+      where: {
+        AND: whereConditions,
+      },
+      include: {
+        category: true,
+        variants: true,
+      },
+      take: 100,
+    });
+
+    return NextResponse.json(products);
+  } catch (error) {
+    console.error('Search error:', error);
+    return NextResponse.json({ error: 'Ошибка поиска' }, { status: 500 });
+  }
 }

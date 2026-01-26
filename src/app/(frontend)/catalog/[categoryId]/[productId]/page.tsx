@@ -1,106 +1,154 @@
-'use client'
+'use client';
 
-import Link from "next/link";
-import {useParams} from "next/navigation";
-import {useState} from "react";
-import {ArrowLeft, Check, ShoppingCart} from "lucide-react";
+import Link from 'next/link';
+import {useParams} from 'next/navigation';
+import {useEffect, useState} from 'react';
+import {ArrowLeft, Check, ShoppingCart} from 'lucide-react';
+import {IProduct, Param} from "../../../../../../types";
+import {addToCart} from "@/lib/cart";
 
-export const products = [
-  {
-    id: '1',
-    name: 'iPhone 14 Pro',
-    description: 'Флагманский смартфон от Apple с передовыми технологиями',
-    price: 89990,
-    image: 'https://images.unsplash.com/photo-1678685888221-cda773a3dcdb?w=400&h=400&fit=crop',
-    categoryId: '2',
-    variants: [
-      { id: 'v1', name: '128GB Черный', price: 89990 },
-      { id: 'v2', name: '256GB Черный', price: 99990 },
-      { id: 'v3', name: '512GB Черный', price: 109990 },
-    ],
-  },
-  {
-    id: '2',
-    name: 'Samsung Galaxy S23',
-    description: 'Мощный Android смартфон с отличной камерой',
-    price: 74990,
-    image: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&h=400&fit=crop',
-    categoryId: '2',
-    variants: [
-      { id: 'v4', name: '128GB Белый', price: 74990 },
-      { id: 'v5', name: '256GB Белый', price: 84990 },
-    ],
-  },
-  {
-    id: '3',
-    name: 'MacBook Pro 14"',
-    description: 'Профессиональный ноутбук для работы и творчества',
-    price: 169990,
-    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=400&fit=crop',
-    categoryId: '3',
-  },
-  {
-    id: '106083-gifts',
-    name: 'Dell XPS 13',
-    description: 'Компактный и мощный ультрабук',
-    price: 119990,
-    image: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=400&h=400&fit=crop',
-    categoryId: '3',
-  },
-  {
-    id: '5',
-    name: 'Мужская куртка',
-    description: 'Стильная куртка для холодной погоды',
-    price: 5990,
-    image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=400&fit=crop',
-    categoryId: '5',
-    variants: [
-      { id: 'v6', name: 'Размер M', price: 5990 },
-      { id: 'v7', name: 'Размер L', price: 5990 },
-      { id: 'v8', name: 'Размер XL', price: 6490 },
-    ],
-  },
-  {
-    id: '6',
-    name: 'Женское платье',
-    description: 'Элегантное платье для особых случаев',
-    price: 7990,
-    image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&h=400&fit=crop',
-    categoryId: '6',
-  },
-  {
-    id: '7',
-    name: 'Диван угловой',
-    description: 'Комфортный диван для гостиной',
-    price: 45990,
-    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=400&fit=crop',
-    categoryId: '8',
-  },
-  {
-    id: '8',
-    name: 'Настенное зеркало',
-    description: 'Декоративное зеркало в минималистичном стиле',
-    price: 3990,
-    image: 'https://images.unsplash.com/photo-1618220179428-22790b461013?w=400&h=400&fit=crop',
-    categoryId: '9',
-  },
-];
+// Типы на основе вашей Prisma-модели
+interface ProductVariant {
+  id: string;
+  name: string;
+  price: number | null;
+  params: Array<Param> | null;
+}
 
-// Функция для получения товара по ID
-export const getProductById = (id: string) => {
-  return products.find(product => product.id === id);
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number | null;
+  pictures: unknown; // Может быть строкой или массивом — обработаем отдельно
+  params: Array<Param> | null;
+  categoryId: string | null;
+  category: Category | null;
+  variants: ProductVariant[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Утилита для безопасного парсинга pictures
+const parsePictures = (pictures: unknown): string[] => {
+  if (Array.isArray(pictures)) {
+    return pictures;
+  }
+  if (typeof pictures === 'string') {
+    try {
+      const trimmed = pictures.trim();
+      if (trimmed === '') return [];
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.warn('Не удалось распарсить pictures:', pictures);
+      return [];
+    }
+  }
+  return [];
 };
 
+// Утилита для отображения параметров
+const renderParams = (params: Array<Param> | null) => {
+  if (!params || params.length === 0) return null;
+
+  return (
+    <div className="mb-8">
+      <h3 className="text-lg mb-3">Характеристики:</h3>
+      <ul className="space-y-2">
+        {params.map((param) => (
+          <li key={param.code} className="flex justify-between border-b pb-1 flex-col md:flex-row">
+            <span className="text-gray-600 min-w-max mr-4">{param.label}:</span>
+            <span className="font-medium md:text-right">{param.value}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
 
 const ProductDetail = () => {
-  const { productId } = useParams<{ productId: string }>();
-  const product = productId ? getProductById(productId) : undefined;
-  const [selectedVariant, setSelectedVariant] = useState<'ProductVariant' | undefined>(
-    product?.variants?.[0]
-  );
+  const params = useParams<{ productId: string }>();
+  const productId = params?.productId;
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [groupProducts, setGroupProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [addedToCart, setAddedToCart] = useState(false);
 
-  if (!product) {
+  useEffect(() => {
+    if (!productId) {
+      setError('ID товара не указан');
+      setLoading(false);
+      return;
+    }
+
+    const fetchProductGroup = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/catalog/product/${encodeURIComponent(productId)}`);
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Товар не найден');
+        }
+        const data: Product[] = await res.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          throw new Error('Некорректный ответ от сервера');
+        }
+        setGroupProducts(data);
+        const main = data[0];
+        setSelectedProduct(main);
+        setSelectedVariant(main.variants.length > 0 ? main.variants[0] : null);
+        setError(null);
+      } catch (err) {
+        setError((err as Error).message || 'Ошибка загрузки товара');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProductGroup();
+  }, [productId]);
+
+  useEffect(() => {
+    if (addedToCart) {
+      const timer = setTimeout(() => setAddedToCart(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [addedToCart]);
+
+  const handleAddToCart = () => {
+    addToCart(selectedProduct as IProduct);
+    setAddedToCart(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <p className="text-xl">Загрузка...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl text-red-600">Ошибка: {error}</h1>
+        <Link href="/catalog" className="mt-4 inline-block text-blue-600 hover:underline">
+          ← Вернуться в каталог
+        </Link>
+      </div>
+    );
+  }
+
+  if (!selectedProduct) {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl">Товар не найден</h1>
@@ -108,97 +156,169 @@ const ProductDetail = () => {
     );
   }
 
-  const handleAddToCart = () => {
-    // addToCart(product, selectedVariant);
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
-  };
+// Получаем все изображения: из товара + из варианта (если есть)
+  const basePictures = parsePictures(selectedProduct.pictures);
+  let variantImage = '';
 
-  const currentPrice = selectedVariant?.price || product.price;
+// Ищем изображение в параметрах варианта (если params — массив)
+  if (selectedVariant?.params && Array.isArray(selectedVariant.params)) {
+    const imageParam = selectedVariant.params.find(p => p.code === 'image');
+    if (imageParam?.value) {
+      variantImage = imageParam.value;
+    }
+  }
+
+// Формируем полный список изображений
+  const allImages = [
+    ...(variantImage ? [variantImage] : []),
+    ...basePictures.filter(img => img && img !== variantImage),
+  ].filter(Boolean) as string[];
+
+// Определяем текущее изображение
+  const currentImage = allImages[currentImageIndex] || '';
+  const currentPrice = selectedVariant?.price ?? selectedProduct.price;
+
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Link
-        href="/catalog"
-        className="inline-flex items-center gap-2 mb-6 hover:text-gray-600 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Назад к каталогу
-      </Link>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Image */}
-        <div className="aspect-square bg-gray-100">
-          <img
-            src={selectedVariant?.image || product.image}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
+        {/* Слайдер изображений */}
+        <div className="space-y-4">
+          <div className="aspect-square bg-gray-100 flex items-center justify-center">
+            {currentImage ? (
+              <img
+                src={currentImage}
+                alt={selectedProduct.name}
+                className="w-full h-full object-contain p-4"
+              />
+            ) : (
+              <span className="text-gray-500">Изображение отсутствует</span>
+            )}
+          </div>
+
+          {allImages.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {allImages.map((img, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentImageIndex(index)}
+                  className={`flex-shrink-0 w-16 h-16 bg-gray-100 rounded border-2 ${
+                    currentImageIndex === index
+                      ? 'border-black'
+                      : 'border-transparent hover:border-gray-400'
+                  }`}
+                >
+                  <img
+                    src={img}
+                    alt={`${selectedProduct.name} ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Info */}
+        {/* Информация о товаре */}
         <div>
-          <h1 className="text-4xl mb-4">{product.name}</h1>
-          <p className="text-3xl mb-6">{currentPrice.toLocaleString('ru-RU')} ₽</p>
-          <p className="text-gray-700 mb-8 leading-relaxed">{product.description}</p>
+          <h1 className="text-4xl mb-4">{selectedProduct.name}</h1>
 
-          {/* Variants */}
-          {product.variants && product.variants.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-lg mb-4">Выберите вариант:</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {product.variants.map(variant => (
+          {currentPrice != null && (
+            <p className="text-3xl mb-6">{currentPrice.toLocaleString('ru-RU')} ₽</p>
+          )}
+
+          {selectedProduct.description && (
+            <p className="text-gray-700 mb-8 leading-relaxed" dangerouslySetInnerHTML={{
+              __html: selectedProduct.description
+            }}/>
+          )}
+
+          {/* Переключатель товаров в группе */}
+          {groupProducts.length > 1 && (
+            <div className="mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {groupProducts.map((prod) => (
                   <button
-                    key={variant.id}
-                    onClick={() => setSelectedVariant(variant)}
-                    className={`p-4 border-2 transition-colors text-left ${
-                      selectedVariant?.id === variant.id
+                    key={prod.id}
+                    onClick={() => {
+                      setSelectedProduct(prod);
+                      setSelectedVariant(prod.variants.length > 0 ? prod.variants[0] : null);
+                    }}
+                    className={`p-4 border-2 text-left transition-colors ${
+                      selectedProduct.id === prod.id
                         ? 'border-black bg-black text-white'
                         : 'border-gray-200 hover:border-gray-400'
                     }`}
                   >
-                    <div className="mb-1">{variant.name}</div>
-                    <div className="text-sm">
-                      {variant.price.toLocaleString('ru-RU')} ₽
-                    </div>
+                    <div className="font-medium">  {prod.name}</div>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Add to Cart */}
+          {/* Варианты */}
+          {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg mb-4">Варианты:</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {selectedProduct.variants.map((variant) => (
+                  <button
+                    key={variant.id}
+                    onClick={() => setSelectedVariant(variant)}
+                    className={`p-4 border-2 text-left transition-colors ${
+                      selectedVariant?.id === variant.id
+                        ? 'border-black bg-black text-white'
+                        : 'border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    <div className="font-medium">{variant.name}</div>
+                    {variant.price != null && (
+                      <div className="text-sm mt-1">
+                        {variant.price.toLocaleString('ru-RU')} ₽
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Характеристики (params) */}
+          {renderParams(selectedProduct?.params)}
+
+          {/* Кнопка "В корзину" */}
           <button
             onClick={handleAddToCart}
             className="w-full bg-black text-white px-8 py-4 text-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-3"
           >
             {addedToCart ? (
               <>
-                <Check className="w-6 h-6" />
+                <Check className="w-6 h-6"/>
                 Добавлено в корзину
               </>
             ) : (
               <>
-                <ShoppingCart className="w-6 h-6" />
+                <ShoppingCart className="w-6 h-6"/>
                 Добавить в корзину
               </>
             )}
           </button>
 
-          {/* Features */}
+          {/* Статичная информация */}
           <div className="mt-12 pt-8 border-t border-gray-200">
             <h3 className="text-lg mb-4">Информация о товаре</h3>
             <ul className="space-y-3 text-gray-700">
               <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 mt-0.5" />
+                <Check className="w-5 h-5 mt-0.5 flex-shrink-0"/>
                 Гарантия качества
               </li>
               <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 mt-0.5" />
+                <Check className="w-5 h-5 mt-0.5 flex-shrink-0"/>
                 Быстрая доставка
               </li>
               <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 mt-0.5" />
+                <Check className="w-5 h-5 mt-0.5 flex-shrink-0"/>
                 Возврат в течение 14 дней
               </li>
             </ul>
@@ -207,7 +327,6 @@ const ProductDetail = () => {
       </div>
     </div>
   );
-
-}
+};
 
 export default ProductDetail;

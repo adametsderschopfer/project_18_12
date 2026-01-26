@@ -36,7 +36,7 @@ const ProductCard: React.FC<ProductCardProps> = ({product}) => {
   if (product.pictures) {
     const pics = parseProductPictures(product.pictures);
     if (pics.length > 0) {
-      imageUrl = pics[0].url;
+      imageUrl = pics[0];
     }
   }
 
@@ -53,10 +53,10 @@ const ProductCard: React.FC<ProductCardProps> = ({product}) => {
         />
       </div>
       <div className="p-4">
-        <h3 className="text-lg mb-2">{product.name}</h3>
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-          {product.description}
-        </p>
+        <h3 className="text-lg mb-2 h-[56px] line-clamp-2">{product.name}</h3>
+        <p className="text-sm text-gray-600 mb-4 h-[40px] line-clamp-2" dangerouslySetInnerHTML={{
+          __html: product.description
+        }} />
         <div className="flex items-center justify-between">
           <span className="text-xl">    {product.price !== null && product.price !== undefined ? (
             formatRubCurrency(product.price)
