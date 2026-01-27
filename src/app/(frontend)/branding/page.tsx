@@ -1,4 +1,4 @@
-export const BrandingPage = () => {
+const BrandingPage = () => {
   const brandingItems = [
     {
       title: 'Баннеры',
@@ -230,3 +230,5 @@ export const BrandingPage = () => {
     </div>
   );
 };
+
+export default BrandingPage;
