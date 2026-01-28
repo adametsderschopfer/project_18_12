@@ -53,6 +53,7 @@ model ProductVariant {
   parentId String // Ссылка на Product.id
   price    Float?
   name     String
+  pictures Json    @default("[]") // JSON-массив строк или объектов
   params   Json? // Доп. параметры варианта
   product  Product @relation(fields: [parentId], references: [id])
 

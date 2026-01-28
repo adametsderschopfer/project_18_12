@@ -14,6 +14,7 @@ interface ProductVariant {
   name: string;
   price: number | null;
   params: Array<Param> | null;
+  pictures: unknown; // Может быть строкой или массивом — обработаем отдельно
 }
 
 interface Category {
@@ -159,21 +160,13 @@ const ProductDetail = () => {
   }
 
 // Получаем все изображения: из товара + из варианта (если есть)
+  const baseVariantPictures = parsePictures(selectedVariant?.pictures);
   const basePictures = parsePictures(selectedProduct.pictures);
-  let variantImage = '';
-
-// Ищем изображение в параметрах варианта (если params — массив)
-  if (selectedVariant?.params && Array.isArray(selectedVariant.params)) {
-    const imageParam = selectedVariant.params.find(p => p.code === 'image');
-    if (imageParam?.value) {
-      variantImage = imageParam.value;
-    }
-  }
 
 // Формируем полный список изображений
   const allImages = [
-    ...(variantImage ? [variantImage] : []),
-    ...basePictures.filter(img => img && img !== variantImage),
+    ...(baseVariantPictures.length ? baseVariantPictures : []),
+    ...basePictures.filter(img => img)
   ].filter(Boolean) as string[];
 
 // Определяем текущее изображение
