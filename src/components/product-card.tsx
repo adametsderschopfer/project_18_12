@@ -8,6 +8,7 @@ import {parseProductPictures} from "@/lib/product";
 import {usePathname} from "next/dist/client/components/navigation";
 import Link from "next/link";
 import {ShoppingCart} from "lucide-react";
+import { SmartImage } from './smart-image';
 
 
 interface ProductCardProps {
@@ -46,7 +47,7 @@ const ProductCard: React.FC<ProductCardProps> = ({product}) => {
       className="group border border-gray-200 hover:border-black transition-colors bg-white"
     >
       <div className="aspect-square overflow-hidden bg-gray-100">
-        <img
+        <SmartImage
           src={imageUrl}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

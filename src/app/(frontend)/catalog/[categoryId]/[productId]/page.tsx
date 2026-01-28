@@ -6,6 +6,7 @@ import {useEffect, useState} from 'react';
 import {ArrowLeft, Check, ShoppingCart} from 'lucide-react';
 import {IProduct, Param} from "../../../../../../types";
 import {addToCart} from "@/lib/cart";
+import {SmartImage} from "@/components/smart-image";
 
 // Типы на основе вашей Prisma-модели
 interface ProductVariant {
@@ -187,7 +188,7 @@ const ProductDetail = () => {
         <div className="space-y-4">
           <div className="aspect-square bg-gray-100 flex items-center justify-center">
             {currentImage ? (
-              <img
+              <SmartImage
                 src={currentImage}
                 alt={selectedProduct.name}
                 className="w-full h-full object-contain p-4"
@@ -209,7 +210,7 @@ const ProductDetail = () => {
                       : 'border-transparent hover:border-gray-400'
                   }`}
                 >
-                  <img
+                  <SmartImage
                     src={img}
                     alt={`${selectedProduct.name} ${index + 1}`}
                     className="w-full h-full object-cover"

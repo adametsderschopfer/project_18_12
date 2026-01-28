@@ -12,6 +12,7 @@ import {
   removeFromCart as removeItemFromCart,
   clearCart,
 } from '@/lib/cart';
+import {SmartImage} from "@/components/smart-image";
 
 // Схема для оформления
 const formSchema = z.object({
@@ -283,7 +284,7 @@ export default function CartPage() {
                 className="flex gap-4 bg-white border border-gray-200 p-4"
               >
                 {imageUrl ? (
-                  <img
+                  <SmartImage
                     src={imageUrl}
                     alt={item.name}
                     className="w-24 h-24 object-cover bg-gray-100"

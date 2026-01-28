@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'files.gifts.ru',
-        pathname: '/reviewer/webp/**',
+        pathname: '/reviewer/**',
       },
       {
         protocol: 'https',
